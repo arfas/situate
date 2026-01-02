@@ -25,14 +25,24 @@ function App() {
   const [creatingRoom, setCreatingRoom] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
-      trackSessionStart();
-      if (view === 'welcome' || view === 'auth') {
-        setView('search');
-        trackPageView('search');
+    if (!authLoading) {
+      if (user) {
+        trackSessionStart();
+        if (view === 'welcome' || view === 'auth') {
+          setView('search');
+          trackPageView('search');
+        }
+      } else if (view === 'search' || view === 'room') {
+        // Only reset to welcome if user was logged in and is now logged out
+        // Don't reset if they're just navigating from welcome to auth
+        setView('welcome');
+        setSearchResults(null);
+        setSelectedRoom(null);
+        setShowAnonymitySelector(false);
+        setShowCreateRoom(false);
       }
     }
-  }, [authLoading, user, view]);
+  }, [authLoading, user]);
 
   const handleSearch = useCallback(async (query: string) => {
     setSearchLoading(true);
