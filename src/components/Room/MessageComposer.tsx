@@ -37,17 +37,17 @@ export function MessageComposer({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg border-2 border-gray-200 focus-within:border-blue-500 transition-colors">
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 focus-within:border-slate-500 focus-within:shadow-md transition-all duration-200">
       {parentMessageId && (
-        <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-200">
-          <span className="text-sm text-blue-700">Replying to message</span>
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
+          <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">💬 Replying to message</span>
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="text-blue-700 hover:text-blue-900"
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3 h-3" />
             </button>
           )}
         </div>
@@ -57,31 +57,34 @@ export function MessageComposer({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={placeholder}
-        rows={4}
+        rows={2}
         maxLength={maxLength}
-        className="w-full px-4 py-3 resize-none focus:outline-none"
+        className="w-full px-4 py-3 bg-transparent resize-none focus:outline-none text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm"
       />
 
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-300 dark:border-gray-700">
         <span
-          className={`text-sm ${
-            remaining < 100 ? 'text-orange-600 font-medium' : 'text-gray-500'
+          className={`text-xs font-medium ${
+            remaining < 100 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'
           }`}
         >
-          {remaining} characters remaining
+          {remaining}
         </span>
 
         <button
           type="submit"
           disabled={!content.trim() || submitting}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
         >
           {submitting ? (
-            'Posting...'
+            <span className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              Sending...
+            </span>
           ) : (
             <>
               <Send className="w-4 h-4" />
-              Post
+              Send
             </>
           )}
         </button>

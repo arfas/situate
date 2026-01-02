@@ -138,105 +138,103 @@ export function RoomView({ room, onBack }: RoomViewProps) {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col transition-colors duration-300">
+      {/* Modern header with glassmorphism */}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-white/30 dark:border-gray-700/30 sticky top-0 z-10 shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
+            className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 mb-4 transition-all duration-200 font-semibold hover:-translate-x-1 transform">
             <ArrowLeft className="w-5 h-5" />
             Back to search
           </button>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{room.title}</h1>
-
-          {room.description && (
-            <p className="text-gray-600 mb-4">{room.description}</p>
-          )}
-
-          <div className="flex items-center gap-6 text-sm text-gray-500">
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>{room.member_count.toLocaleString()} members</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <MessageCircle className="w-4 h-4" />
-              <span>{room.message_count.toLocaleString()} messages</span>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">{room.title}</h1>
+              {room.description && (
+                <p className="text-gray-700 dark:text-gray-300 text-sm">{room.description}</p>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-4">
-            <span className="text-sm text-gray-600">Sort by:</span>
-            <button
-              onClick={() => setSortBy('helpful')}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm transition-colors ${
-                sortBy === 'helpful'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              Helpful
-            </button>
-            <button
-              onClick={() => setSortBy('recent')}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm transition-colors ${
-                sortBy === 'recent'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              Recent
-            </button>
-            <button
-              onClick={() => setSortBy('oldest')}
-              className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                sortBy === 'oldest'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Oldest
-            </button>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+              <Users className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+              <span className="font-medium">{room.member_count.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+              <MessageCircle className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+              <span className="font-medium">{room.message_count.toLocaleString()}</span>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => setSortBy('helpful')}
+                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs transition-all duration-200 font-medium ${
+                  sortBy === 'helpful'
+                    ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <TrendingUp className="w-3 h-3" />
+                Helpful
+              </button>
+              <button
+                onClick={() => setSortBy('recent')}
+                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs transition-all duration-200 font-medium ${
+                  sortBy === 'recent'
+                    ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <Clock className="w-3 h-3" />
+                Recent
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="mb-6">
+      {/* Messages area - scrollable chat container */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-200 dark:border-purple-800 border-t-purple-600 dark:border-t-purple-400 mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">Loading messages...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center py-16 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-3xl border border-white/30 dark:border-gray-700/30 shadow-xl">
+              <MessageCircle className="w-16 h-16 text-purple-300 dark:text-purple-700 mx-auto mb-4" />
+              <p className="text-gray-700 dark:text-gray-300 text-lg font-semibold">No messages yet</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Be the first to start the conversation!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sortedMessages.map((message) => (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  onReply={setReplyingTo}
+                  onVote={handleVote}
+                  onReport={handleReport}
+                  isOwnMessage={message.user_id === user?.id}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Fixed message composer at bottom */}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-t border-white/30 dark:border-gray-700/30 sticky bottom-0 z-10 shadow-lg">
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <MessageComposer
             onSubmit={handlePostMessage}
             parentMessageId={replyingTo}
             onCancel={() => setReplyingTo(null)}
           />
         </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">Loading messages...</p>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No messages yet</p>
-            <p className="text-gray-400 text-sm mt-2">Be the first to start the conversation!</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 divide-y divide-gray-100">
-            {sortedMessages.map((message) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                onReply={setReplyingTo}
-                onVote={handleVote}
-                onReport={handleReport}
-                isOwnMessage={message.user_id === user?.id}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
