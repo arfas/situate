@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
+import { useEncryption } from './contexts/EncryptionContext';
 import { Welcome } from './components/Onboarding/Welcome';
 import { AuthForm } from './components/Auth/AuthForm';
 import { SearchBar } from './components/Search/SearchBar';
@@ -7,14 +8,16 @@ import { SearchResults } from './components/Search/SearchResults';
 import { RoomView } from './components/Room/RoomView';
 import { AnonymitySelector } from './components/Onboarding/AnonymitySelector';
 import { SettingsMenu } from './components/Settings/SettingsMenu';
+import { EncryptionSetup } from './components/Encryption/EncryptionSetup';
 import { searchRooms, createRoom, joinRoom, getRoomMembership, type Room, type SearchResponse } from './services/api';
 import { trackSearchQuery, trackRoomCreated, trackRoomJoined, trackSessionStart, trackPageView } from './lib/analytics';
-import { Loader2, Plus, LogOut, Settings } from 'lucide-react';
+import { Loader2, Plus, LogOut, Settings, Shield } from 'lucide-react';
 
 type View = 'welcome' | 'auth' | 'search' | 'room';
 
 function App() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { isEnabled: encryptionEnabled, isReady: encryptionReady } = useEncryption();
   const [view, setView] = useState<View>('welcome');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [searchLoading, setSearchLoading] = useState(false);
@@ -23,6 +26,7 @@ function App() {
   const [showAnonymitySelector, setShowAnonymitySelector] = useState(false);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showEncryptionSetup, setShowEncryptionSetup] = useState(false);
   const [newRoomData, setNewRoomData] = useState({ title: '', description: '', category: '' });
   const [creatingRoom, setCreatingRoom] = useState(false);
 
@@ -194,6 +198,19 @@ function App() {
             SupportCircle
           </h1>
           <div className="flex items-center gap-3">
+            {encryptionEnabled && (
+              <button
+                onClick={() => setShowEncryptionSetup(true)}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  encryptionReady
+                    ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={encryptionReady ? 'Encryption active' : 'Setup encryption'}
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => setShowCreateRoom(true)}
               className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg hover:shadow-md transition-all duration-200 font-medium text-sm"
@@ -334,6 +351,10 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {showEncryptionSetup && (
+        <EncryptionSetup onComplete={() => setShowEncryptionSetup(false)} />
       )}
     </div>
   );

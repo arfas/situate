@@ -25,7 +25,7 @@ FROM (
   -- This would come from PostHog events, but we can track in DB too
   SELECT 
     created_at,
-    user_id,
+    id as user_id,
     0 as results_count -- Placeholder, would need to log this
   FROM profiles
   LIMIT 0 -- Placeholder view structure
@@ -47,7 +47,7 @@ WITH user_activity AS (
   UNION
   SELECT DISTINCT
     user_id,
-    DATE(created_at) as activity_date
+    DATE(joined_at) as activity_date
   FROM room_memberships
 )
 SELECT 
@@ -90,8 +90,8 @@ SELECT
   user_id,
   COUNT(*) as rooms_joined,
   COUNT(CASE WHEN anonymity_level != 'identified' THEN 1 END) as anonymous_joins,
-  MIN(created_at) as first_join_date,
-  MAX(created_at) as last_join_date
+  MIN(joined_at) as first_join_date,
+  MAX(joined_at) as last_join_date
 FROM room_memberships
 GROUP BY user_id;
 
@@ -103,7 +103,7 @@ GROUP BY user_id;
 CREATE OR REPLACE VIEW cohort_retention AS
 WITH user_cohorts AS (
   SELECT 
-    user_id,
+    id as user_id,
     DATE(created_at) as cohort_date,
     created_at
   FROM auth.users
@@ -188,19 +188,31 @@ ORDER BY m.upvotes DESC, m.created_at DESC;
 
 -- Safety metrics: report rate
 CREATE OR REPLACE VIEW safety_metrics AS
+WITH daily_reports AS (
+  SELECT 
+    DATE(created_at) as date,
+    COUNT(id) as total_reports,
+    COUNT(DISTINCT message_id) as unique_messages_reported,
+    COUNT(DISTINCT reporter_id) as unique_reporters
+  FROM reports
+  GROUP BY DATE(created_at)
+),
+daily_messages AS (
+  SELECT 
+    DATE(created_at) as date,
+    COUNT(*) as total_messages
+  FROM messages
+  GROUP BY DATE(created_at)
+)
 SELECT 
-  DATE(r.created_at) as date,
-  COUNT(r.id) as total_reports,
-  COUNT(DISTINCT r.message_id) as unique_messages_reported,
-  COUNT(DISTINCT r.reported_by) as unique_reporters,
-  COUNT(r.id)::float / NULLIF((
-    SELECT COUNT(*) 
-    FROM messages 
-    WHERE DATE(created_at) = DATE(r.created_at)
-  ), 0) as report_rate
-FROM reports r
-GROUP BY DATE(r.created_at)
-ORDER BY date DESC;
+  dr.date,
+  dr.total_reports,
+  dr.unique_messages_reported,
+  dr.unique_reporters,
+  dr.total_reports::float / NULLIF(dm.total_messages, 0) as report_rate
+FROM daily_reports dr
+LEFT JOIN daily_messages dm ON dr.date = dm.date
+ORDER BY dr.date DESC;
 
 -- Report reasons breakdown
 CREATE OR REPLACE VIEW report_reasons_breakdown AS
@@ -218,7 +230,7 @@ CREATE OR REPLACE VIEW time_to_first_message AS
 SELECT 
   rm.room_id,
   r.title as room_title,
-  AVG(EXTRACT(EPOCH FROM (m.first_message_time - rm.created_at))) / 60 as avg_minutes_to_first_message,
+  AVG(EXTRACT(EPOCH FROM (m.first_message_time - rm.joined_at))) / 60 as avg_minutes_to_first_message,
   COUNT(DISTINCT rm.user_id) as users_who_messaged
 FROM room_memberships rm
 JOIN rooms r ON rm.room_id = r.id
@@ -292,7 +304,7 @@ UNION ALL
 SELECT 
   'Report Rate (24h)',
   (
-    SELECT ROUND(100.0 * COUNT(r.id)::float / NULLIF(COUNT(m.id), 0), 2)::text || '%'
+    SELECT ROUND((100.0 * COUNT(r.id)::numeric / NULLIF(COUNT(m.id), 0))::numeric, 2)::text || '%'
     FROM reports r
     FULL OUTER JOIN messages m ON DATE(m.created_at) = CURRENT_DATE
     WHERE DATE(r.created_at) = CURRENT_DATE

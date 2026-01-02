@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Users, TrendingUp, Clock, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useEncryption } from '../../contexts/EncryptionContext';
 import { getMessages, postMessage, voteOnMessage, reportMessage, type Message } from '../../services/messages';
 import { MessageItem } from './MessageItem';
 import { MessageComposer } from './MessageComposer';
@@ -17,7 +18,9 @@ type SortOption = 'helpful' | 'recent' | 'oldest';
 
 export function RoomView({ room, onBack }: RoomViewProps) {
   const { user } = useAuth();
+  const { decryptMessage, isReady: encryptionReady } = useEncryption();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [decryptedMessages, setDecryptedMessages] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('helpful');
@@ -28,29 +31,84 @@ export function RoomView({ room, onBack }: RoomViewProps) {
     trackRoomViewed(room.id);
     loadMessages();
 
+    // Set up polling as a fallback (every 5 seconds)
+    const pollInterval = setInterval(() => {
+      loadMessages();
+    }, 5000);
+
     const channel = supabase
       .channel(`room:${room.id}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'messages',
           filter: `room_id=eq.${room.id}`,
         },
         (payload) => {
-          console.log('Real-time event received:', payload);
+          console.log('Real-time INSERT event received:', payload);
+          loadMessages();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${room.id}`,
+        },
+        (payload) => {
+          console.log('Real-time UPDATE event received:', payload);
           loadMessages();
         }
       )
       .subscribe((status) => {
         console.log('Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to room:', room.id);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Channel error, attempting to reconnect...');
+          // Retry subscription after a delay
+          setTimeout(() => {
+            loadMessages();
+          }, 1000);
+        }
       });
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [room.id]);
+
+  // Decrypt messages when they change
+  useEffect(() => {
+    if (encryptionReady && messages.length > 0) {
+      decryptAllMessages();
+    }
+  }, [messages, encryptionReady]);
+
+  async function decryptAllMessages() {
+    const newDecrypted = new Map<string, string>();
+    
+    for (const message of messages) {
+      if (message.is_encrypted && !decryptedMessages.has(message.id)) {
+        try {
+          const decrypted = await decryptMessage(message.content, room.id);
+          newDecrypted.set(message.id, decrypted);
+        } catch (error) {
+          console.error('Failed to decrypt message:', message.id, error);
+          newDecrypted.set(message.id, '[Unable to decrypt]');
+        }
+      }
+    }
+    
+    if (newDecrypted.size > 0) {
+      setDecryptedMessages(new Map([...decryptedMessages, ...newDecrypted]));
+    }
+  }
 
   async function loadMessages() {
     try {
@@ -65,10 +123,10 @@ export function RoomView({ room, onBack }: RoomViewProps) {
     }
   }
 
-  async function handlePostMessage(content: string) {
+  async function handlePostMessage(content: string, isEncrypted: boolean) {
     const timeToFirstMessage = messages.length === 0 ? (Date.now() - joinedAt) / 1000 : 0;
     
-    await postMessage(room.id, content, replyingTo);
+    await postMessage(room.id, content, replyingTo, isEncrypted);
     
     // Track message sent
     trackMessageSent(room.id, content.length, true); // Assuming anonymous for now
@@ -211,16 +269,23 @@ export function RoomView({ room, onBack }: RoomViewProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {sortedMessages.map((message) => (
-                <MessageItem
-                  key={message.id}
-                  message={message}
-                  onReply={setReplyingTo}
-                  onVote={handleVote}
-                  onReport={handleReport}
-                  isOwnMessage={message.user_id === user?.id}
-                />
-              ))}
+              {sortedMessages.map((message) => {
+                // Use decrypted content if available
+                const displayMessage = message.is_encrypted && decryptedMessages.has(message.id)
+                  ? { ...message, content: decryptedMessages.get(message.id)! }
+                  : message;
+                
+                return (
+                  <MessageItem
+                    key={message.id}
+                    message={displayMessage}
+                    onReply={setReplyingTo}
+                    onVote={handleVote}
+                    onReport={handleReport}
+                    isOwnMessage={message.user_id === user?.id}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -230,6 +295,7 @@ export function RoomView({ room, onBack }: RoomViewProps) {
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-t border-white/30 dark:border-gray-700/30 sticky bottom-0 z-10 shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <MessageComposer
+            roomId={room.id}
             onSubmit={handlePostMessage}
             parentMessageId={replyingTo}
             onCancel={() => setReplyingTo(null)}
