@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Send, X } from 'lucide-react';
+import { Send, X, AlertCircle } from 'lucide-react';
+import { useEncryption } from '../../contexts/EncryptionContext';
 
 interface MessageComposerProps {
-  onSubmit: (content: string) => Promise<void>;
+  roomId: string;
+  onSubmit: (content: string, isEncrypted: boolean) => Promise<void>;
   parentMessageId?: string | null;
   onCancel?: () => void;
   placeholder?: string;
 }
 
 export function MessageComposer({
+  roomId,
   onSubmit,
   parentMessageId,
   onCancel,
@@ -16,6 +19,8 @@ export function MessageComposer({
 }: MessageComposerProps) {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const { isReady: encryptionReady, encryptMessage } = useEncryption();
 
   const maxLength = 2000;
   const remaining = maxLength - content.length;
@@ -25,12 +30,30 @@ export function MessageComposer({
     if (!content.trim() || submitting) return;
 
     setSubmitting(true);
+    setError('');
     try {
-      await onSubmit(content.trim());
+      let messageToSend = content.trim();
+      let isEncrypted = false;
+
+      // Encrypt if encryption is ready
+      if (encryptionReady) {
+        try {
+          messageToSend = await encryptMessage(content.trim(), roomId);
+          isEncrypted = true;
+        } catch (err: any) {
+          console.error('Encryption failed:', err);
+          setError('Failed to encrypt message. Send unencrypted?');
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      await onSubmit(messageToSend, isEncrypted);
       setContent('');
       onCancel?.();
     } catch (error) {
       console.error('Failed to post message:', error);
+      setError('Failed to send message');
     } finally {
       setSubmitting(false);
     }
@@ -62,14 +85,31 @@ export function MessageComposer({
         className="w-full px-4 py-3 bg-transparent resize-none focus:outline-none text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm"
       />
 
+      {error && (
+        <div className="px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border-t border-orange-200 dark:border-orange-800">
+          <div className="flex items-center gap-2 text-xs text-orange-700 dark:text-orange-400">
+            <AlertCircle className="w-3 h-3" />
+            {error}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-4 py-2 border-t border-gray-300 dark:border-gray-700">
-        <span
-          className={`text-xs font-medium ${
-            remaining < 100 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'
-          }`}
-        >
-          {remaining}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-medium ${
+              remaining < 100 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            {remaining}
+          </span>
+          {encryptionReady && (
+            <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+              Encrypted
+            </span>
+          )}
+        </div>
 
         <button
           type="submit"

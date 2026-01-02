@@ -13,6 +13,7 @@ export interface Message {
   is_pinned: boolean;
   is_deleted: boolean;
   is_hidden: boolean;
+  is_encrypted: boolean;
   author_display_name?: string;
   user_vote?: 'up' | 'down' | null;
   replies?: Message[];
@@ -98,7 +99,8 @@ function buildMessageTree(messages: Message[]): Message[] {
 export async function postMessage(
   roomId: string,
   content: string,
-  parentMessageId?: string | null
+  parentMessageId?: string | null,
+  isEncrypted: boolean = false
 ) {
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -114,6 +116,7 @@ export async function postMessage(
       user_id: user.id,
       content,
       parent_message_id: parentMessageId || null,
+      is_encrypted: isEncrypted,
     })
     .select()
     .single();
