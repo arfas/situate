@@ -221,9 +221,6 @@ All tables use Row Level Security (RLS):
 - Ensure room exists and isn't archived
 - Look for unique constraint violations
 
-## License
-
-MIT
 
 ## Support
 

@@ -34,22 +34,22 @@ export function SearchBar({ onSearch, loading, placeholder = "What situation are
 
   return (
     <form onSubmit={handleSubmit} className="relative w-full max-w-3xl">
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+      <div className="relative group">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-slate-700 dark:group-focus-within:text-slate-400 transition-colors duration-200" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-14 pr-14 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-blue-500 focus:outline-none transition-colors"
+          className="w-full pl-12 pr-12 py-3 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:border-slate-500 focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-500 focus:outline-none transition-all duration-200 shadow-md hover:shadow-lg placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-white"
         />
         {loading && (
-          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 animate-spin" />
+          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400 animate-spin" />
         )}
       </div>
 
       {query.trim().length > 0 && query.trim().length < 3 && (
-        <p className="mt-2 text-sm text-gray-500 pl-4">
+        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 pl-5 animate-fade-in">
           Type at least 3 characters to search
         </p>
       )}
