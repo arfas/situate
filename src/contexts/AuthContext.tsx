@@ -26,15 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('Error getting session:', error);
         setLoading(false);
-      }
-    });
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
@@ -75,26 +80,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    // Track signup event
-    if (!error) {
-      trackSignup('email');
+      // Track signup event
+      if (!error) {
+        trackSignup('email');
+      }
+
+      // Profile is now automatically created by database trigger
+      return { error };
+    } catch (err) {
+      console.error('Network error during signup:', err);
+      return { 
+        error: { 
+          message: 'Cannot connect to server. Please check your internet connection or try again later.',
+          name: 'NetworkError',
+          status: 0
+        } as AuthError 
+      };
     }
-
-    // Profile is now automatically created by database trigger
-    return { error };
   }
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } catch (err) {
+      console.error('Network error during signin:', err);
+      return { 
+        error: { 
+          message: 'Cannot connect to server. Please check your internet connection or try again later.',
+          name: 'NetworkError',
+          status: 0
+        } as AuthError 
+      };
+    }
   }
 
   async function signOut() {

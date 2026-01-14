@@ -204,7 +204,40 @@ export async function voteOnMessage(
       .select()
       .single();
 
-    if (error) throw error;
+    // Handle duplicate key error (race condition)
+    if (error) {
+      if (error.code === '23505') {
+        // Duplicate vote - fetch and update instead
+        const { data: vote } = await supabase
+          .from('votes')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('message_id', messageId)
+          .single();
+
+        if (vote) {
+          // @ts-expect-error - Supabase type inference issue
+          if (vote.vote_type === voteType) {
+            // Same vote type, remove it
+            await supabase.from('votes').delete().eq('id', vote.id);
+            return null;
+          } else {
+            // Different vote type, update it
+            const { data: updated, error: updateError } = await supabase
+              .from('votes')
+              // @ts-expect-error - Supabase type inference issue
+              .update({ vote_type: voteType })
+              .eq('id', vote.id)
+              .select()
+              .single();
+            if (updateError) throw updateError;
+            return updated;
+          }
+        }
+      }
+      throw error;
+    }
+
     return data;
   }
 }

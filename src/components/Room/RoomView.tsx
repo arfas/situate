@@ -150,8 +150,12 @@ export function RoomView({ room, onBack }: RoomViewProps) {
       }
       
       await loadMessages();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to vote:', error);
+      // Silently handle duplicate vote errors (race conditions)
+      if (error?.code !== '23505') {
+        alert('Failed to vote. Please try again.');
+      }
     }
   }
 
